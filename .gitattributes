@@ -1,0 +1,8 @@
+# The container runs Linux: a CRLF line ending in tick.sh makes the shebang
+# `#!/bin/bash\r`, which fails as "bad interpreter", and CRLF in the crontab
+# breaks supercronic's parsing. This repo is authored on Windows, so pin the
+# executable/config files to LF in the working tree, not just in the index.
+* text=auto eol=lf
+*.sh text eol=lf
+crontab text eol=lf
+Dockerfile text eol=lf

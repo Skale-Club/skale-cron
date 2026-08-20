@@ -1,0 +1,99 @@
+# skale-cron crontab — supercronic format (standard 5-field cron + command).
+#
+# One versioned file holding the scheduled jobs for every project in the
+# Skale-Club org. Each job used to be its own GitHub Actions workflow
+# (`.github/workflows/*.yml` in the source repo) billed a full minute per
+# run even though the actual `curl` took seconds; moving the trigger here
+# runs it on the Hetzner VPS that was already doing the work, for free.
+#
+# All times are UTC (see .env.example TZ) so these cadences mean exactly
+# what the GitHub `cron:` expressions they replace meant.
+#
+# Command form: tick.sh <project> <job_name> <url> [expected_interval_seconds] [max_seconds]
+# <project> (XPHERE, XKEDULE, SKALECLUB, XTIMATOR, ...) drives which
+# <PROJECT>_CRON_SECRET and which per-project Telegram bot tick.sh resolves
+# automatically — see tick.sh's header for the full resolution order and
+# the CRON_SECRET_OVERRIDE / HTTP_METHOD escape hatches used below.
+
+# ---------------------------------------------------------------------------
+# xphere (source: xphere/.github/workflows/*.yml)
+# ---------------------------------------------------------------------------
+
+# campaign-tick — advances stalled Vapi voice campaigns whose contact list
+# spans more than one batch (the end-of-call webhook never re-fires the next
+# batch on its own). Kept at */5, matching the GitHub cadence: the endpoint
+# is idempotent/atomic per contact, but firing tighter than every 5 minutes
+# skews the effective calls_per_minute pacing (see the original workflow's
+# comment on batch math). max_seconds 120 matches the workflow's --max-time.
+*/5 * * * * /app/tick.sh XPHERE campaign-tick "${XPHERE_BASE_URL}/api/cron/campaign-tick" 300 120
+
+# calendar-tick — fires meeting.starts_in / meeting.ended workflow triggers.
+# The endpoint is idempotent (UNIQUE constraint on scheduled_workflow_ticks),
+# so */5 is safe and matches the smallest reminder offset (-5m) the route's
+# window logic covers.
+*/5 * * * * /app/tick.sh XPHERE calendar-tick "${XPHERE_BASE_URL}/api/cron/calendar-tick" 300 60
+
+# twilio-sms-reconcile — backfills inbound SMS that missed the webhook.
+# Plan cadence tightened from */5 to */10: safe because the query's
+# lookbackMinutes=180 (3h) comfortably covers a 10-minute gap between runs.
+# Query params kept exactly as the workflow used them.
+*/10 * * * * /app/tick.sh XPHERE twilio-sms-reconcile "${XPHERE_BASE_URL}/api/cron/twilio-sms-reconcile?lookbackMinutes=180&maxPagesPerNumber=5" 600 120
+
+# website-analyzer — processes up to 10 pending/stale prospect website
+# analyses per run. Cadence unchanged at */10 (already the target) so
+# newly ingested prospects get analyzed promptly.
+*/10 * * * * /app/tick.sh XPHERE website-analyzer "${XPHERE_BASE_URL}/api/cron/website-analyzer" 600 60
+
+# global-knowledge-notion — drains the durable Notion sync queue. This job
+# legitimately runs 88-103s (it's why the GitHub workflow bypassed
+# Cloudflare's 100s proxy timeout via --resolve to the origin IP). On this
+# VPS the request can go straight to the container's internal address once
+# XPHERE_BASE_URL is switched to it (see README "internal networking"),
+# which sidesteps the Cloudflare 524 risk entirely. max_seconds 180 gives
+# headroom above the observed 103s ceiling.
+*/10 * * * * /app/tick.sh XPHERE global-knowledge-notion "${XPHERE_BASE_URL}/api/cron/global-knowledge-notion" 600 180
+
+# scrape-reviews — daily Google Reviews scrape (SerpAPI) across every active
+# google_business_profile. xphere-specific exception: authenticates with
+# OPERATOR_AUTOMATION_SECRET instead of XPHERE_CRON_SECRET (matches the
+# separate secret the source workflow used), and is a POST, not a GET —
+# both overridden inline for this one line only.
+0 6 * * * CRON_SECRET_OVERRIDE="$OPERATOR_AUTOMATION_SECRET" HTTP_METHOD=POST /app/tick.sh XPHERE scrape-reviews "${XPHERE_BASE_URL}/api/reviews/scrape" 86400 120
+
+# --- NOT migrated: meta-capi-worker, meta-audience-sync -------------------
+# Both `xphere/.github/workflows/meta-capi-worker.yml` and
+# `meta-audience-sync.yml` check out the repo and run a TypeScript script
+# (`npx tsx scripts/meta-*.ts`) directly against Supabase + the Meta Graph
+# API using repo secrets (SUPABASE_SERVICE_ROLE_KEY, ENCRYPTION_SECRET,
+# META_SYSTEM_USER_TOKEN). Neither reduces to a single authenticated HTTP
+# call today — there is no /api/cron/meta-capi-worker or
+# /api/cron/meta-audience-sync route to hit. Do not fabricate one here.
+# Migrate these once an HTTP entrypoint exists for each script; see
+# README.md / the task report for details.
+
+# ---------------------------------------------------------------------------
+# PHASE 3/4 — enable when that repo's PR lands
+# Each of the following targets a different app/repo. <PROJECT>_BASE_URL,
+# <PROJECT>_CRON_SECRET and the per-project Telegram bot vars are resolved
+# automatically by tick.sh from the project slug — no per-line overrides
+# needed once the app actually exposes these routes. Paths below are
+# placeholders — verify the real route in that repo's PR before uncommenting.
+# ---------------------------------------------------------------------------
+
+# xkedule calendar-sync
+# */15 * * * * /app/tick.sh XKEDULE calendar-sync "${XKEDULE_BASE_URL}/api/cron/calendar-sync" 900 60
+
+# xkedule sync-queue-health
+# 7,22,37,52 * * * * /app/tick.sh XKEDULE sync-queue-health "${XKEDULE_BASE_URL}/api/cron/sync-queue-health" 900 60
+
+# skaleclub blog generate
+# 0,30 * * * * /app/tick.sh SKALECLUB blog-generate "${SKALECLUB_BASE_URL}/api/cron/blog-generate" 1800 120
+
+# skaleclub blog fetch-rss
+# 0,30 * * * * /app/tick.sh SKALECLUB blog-fetch-rss "${SKALECLUB_BASE_URL}/api/cron/blog-fetch-rss" 1800 60
+
+# xtimator cleanup-orphan-projects (daily)
+# 0 4 * * * /app/tick.sh XTIMATOR cleanup-orphan-projects "${XTIMATOR_BASE_URL}/api/cron/cleanup-orphan-projects" 86400 120
+
+# xtimator cleanup-whatsapp-sessions
+# */15 * * * * /app/tick.sh XTIMATOR cleanup-whatsapp-sessions "${XTIMATOR_BASE_URL}/api/cron/cleanup-whatsapp-sessions" 900 60
