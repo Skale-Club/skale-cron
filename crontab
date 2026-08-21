@@ -72,28 +72,31 @@
 # README.md / the task report for details.
 
 # ---------------------------------------------------------------------------
-# PHASE 3/4 — enable when that repo's PR lands
-# Each of the following targets a different app/repo. <PROJECT>_BASE_URL,
-# <PROJECT>_CRON_SECRET and the per-project Telegram bot vars are resolved
-# automatically by tick.sh from the project slug — no per-line overrides
-# needed once the app actually exposes these routes. Paths below are
-# placeholders — verify the real route in that repo's PR before uncommenting.
-# ---------------------------------------------------------------------------
 
-# xkedule calendar-sync
-# */15 * * * * /app/tick.sh XKEDULE calendar-sync "${XKEDULE_BASE_URL}/api/cron/calendar-sync" 900 60
-
-# xkedule sync-queue-health
-# 7,22,37,52 * * * * /app/tick.sh XKEDULE sync-queue-health "${XKEDULE_BASE_URL}/api/cron/sync-queue-health" 900 60
-
-# skaleclub blog generate
-# 0,30 * * * * /app/tick.sh SKALECLUB blog-generate "${SKALECLUB_BASE_URL}/api/cron/blog-generate" 1800 120
-
-# skaleclub blog fetch-rss
-# 0,30 * * * * /app/tick.sh SKALECLUB blog-fetch-rss "${SKALECLUB_BASE_URL}/api/cron/blog-fetch-rss" 1800 60
-
-# xtimator cleanup-orphan-projects (daily)
-# 0 4 * * * /app/tick.sh XTIMATOR cleanup-orphan-projects "${XTIMATOR_BASE_URL}/api/cron/cleanup-orphan-projects" 86400 120
-
-# xtimator cleanup-whatsapp-sessions
+# ── PHASE 3/4 — other projects, PREPARED BUT NOT ENABLED ─────────────────────
+#
+# Credentials for these are already set on the skale-cron service
+# (<PROJECT>_BASE_URL / <PROJECT>_CRON_SECRET), so enabling one is just
+# uncommenting its line. URLs and cadences below were read from each repo's own
+# workflow, not guessed.
+#
+# DO NOT simply uncomment and leave the GitHub schedule running. xphere can run
+# both sides at once because its cron endpoints are idempotent by design. These
+# are not known to be: two schedulers racing blog generation could publish the
+# same post twice. Uncomment a line and delete that repo's `schedule:` block in
+# the SAME change, once alerting is live.
+#
+# skaleclub — .github/workflows/blog-cron.yml, Bearer CRON_SECRET
+# 0,30 * * * * /app/tick.sh SKALECLUB blog-generate "${SKALECLUB_BASE_URL}/api/blog/cron/generate" 1800 120
+# 0,30 * * * * /app/tick.sh SKALECLUB blog-fetch-rss "${SKALECLUB_BASE_URL}/api/blog/cron/fetch-rss" 1800 60
+#
+# xtimator — .github/workflows/cron-jobs.yml, Bearer CRON_SECRET
+# 0 3 * * * /app/tick.sh XTIMATOR cleanup-orphan-projects "${XTIMATOR_BASE_URL}/api/cron/cleanup-orphan-projects" 86400 120
 # */15 * * * * /app/tick.sh XTIMATOR cleanup-whatsapp-sessions "${XTIMATOR_BASE_URL}/api/cron/cleanup-whatsapp-sessions" 900 60
+#
+# xkedule — NOT prepared. It deploys on a different Coolify instance that this
+# token cannot reach, so its CRON_SECRET could not be obtained. Note also that
+# its Calendar Sync Worker has been failing every scheduled run in production
+# (app healthy, endpoint returns 401), i.e. the GitHub secret and the container
+# already disagree -- fix that before migrating it here.
+
