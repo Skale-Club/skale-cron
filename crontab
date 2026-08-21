@@ -73,7 +73,7 @@
 
 # ---------------------------------------------------------------------------
 
-# ── PHASE 3/4 — other projects, PREPARED BUT NOT ENABLED ─────────────────────
+# ── Other projects ───────────────────────────────────────────────────────────
 #
 # Credentials for these are already set on the skale-cron service
 # (<PROJECT>_BASE_URL / <PROJECT>_CRON_SECRET), so enabling one is just
@@ -87,12 +87,12 @@
 # the SAME change, once alerting is live.
 #
 # skaleclub — .github/workflows/blog-cron.yml, Bearer CRON_SECRET
-# 0,30 * * * * /app/tick.sh SKALECLUB blog-generate "${SKALECLUB_BASE_URL}/api/blog/cron/generate" 1800 120
-# 0,30 * * * * /app/tick.sh SKALECLUB blog-fetch-rss "${SKALECLUB_BASE_URL}/api/blog/cron/fetch-rss" 1800 60
+0,30 * * * * /app/tick.sh SKALECLUB blog-generate "${SKALECLUB_BASE_URL}/api/blog/cron/generate" 1800 120
+0,30 * * * * /app/tick.sh SKALECLUB blog-fetch-rss "${SKALECLUB_BASE_URL}/api/blog/cron/fetch-rss" 1800 60
 #
 # xtimator — .github/workflows/cron-jobs.yml, Bearer CRON_SECRET
-# 0 3 * * * /app/tick.sh XTIMATOR cleanup-orphan-projects "${XTIMATOR_BASE_URL}/api/cron/cleanup-orphan-projects" 86400 120
-# */15 * * * * /app/tick.sh XTIMATOR cleanup-whatsapp-sessions "${XTIMATOR_BASE_URL}/api/cron/cleanup-whatsapp-sessions" 900 60
+0 3 * * * /app/tick.sh XTIMATOR cleanup-orphan-projects "${XTIMATOR_BASE_URL}/api/cron/cleanup-orphan-projects" 86400 120
+*/15 * * * * /app/tick.sh XTIMATOR cleanup-whatsapp-sessions "${XTIMATOR_BASE_URL}/api/cron/cleanup-whatsapp-sessions" 900 60
 #
 # xkedule — NOT prepared. It deploys on a different Coolify instance that this
 # token cannot reach, so its CRON_SECRET could not be obtained. Note also that
