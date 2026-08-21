@@ -77,7 +77,11 @@ trap cleanup EXIT
 # so losing a quote or a backslash costs nothing and removes the whole class of
 # malformed-payload bugs rather than trying to escape its way out of them.
 json_escape() {
-  tr -cd '[:print:]' | tr -d '"\\'
+  # Range, not '[:print:]': busybox tr in Alpine treats the class name as the
+  # literal set of characters [ : p r i n t ], so '[:print:]' silently reduced
+  # an HTML error page to the letters of the word "print". ' -~' is space
+  # through tilde, i.e. printable ASCII, and means the same thing everywhere.
+  tr -cd ' -~' | tr -d '"\\'
 }
 
 # --- resolve this job's own auth secret (per project, with override) ---
