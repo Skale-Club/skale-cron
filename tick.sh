@@ -92,12 +92,34 @@ else
   job_secret="${!job_secret_var:-}"
 fi
 
+# --- optional: bypass the CDN for long-running jobs -------------------
+# Cloudflare drops any origin request that runs past ~100s with a 524. The
+# global-knowledge-notion drain routinely takes 88-103s and has been measured
+# at 94.6s here, so it sits inside that margin by luck, not design. Setting
+# ORIGIN_HOSTNAME on a crontab line pins the request to the origin address and
+# skips the edge entirely; Host header and TLS SNI stay untouched, so Traefik
+# still routes it and the certificate still validates. Same mechanism the
+# GitHub workflow used before this job moved here — see xphere's
+# docs/ops/cloudflare-cdn.md.
+resolve_args=""
+if [ -n "${ORIGIN_HOSTNAME:-}" ]; then
+  url_host=$(printf '%s' "$url" | sed -E 's#^https?://([^/]+).*#\1#')
+  origin_ip=$(getent hosts "$ORIGIN_HOSTNAME" 2>/dev/null | awk '{print $1; exit}')
+  if [ -n "$origin_ip" ]; then
+    resolve_args="--resolve ${url_host}:443:${origin_ip}"
+  else
+    echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ) project=${project_upper} job=${job_name} warn=origin_unresolved host=${ORIGIN_HOSTNAME} effect=falling_back_to_edge_524_risk"
+  fi
+fi
+
 # --- fire the job -----------------------------------------------------
 # curl reports its own wall-clock time via %{time_total} (seconds, fractional).
 # We use that instead of `date +%N` because Alpine's busybox `date` does not
 # reliably support sub-second formatting.
+# shellcheck disable=SC2086  # resolve_args is intentionally word-split
 curl_out=$(curl -sS -o "$body_file" -w '%{http_code} %{time_total}' \
   --connect-timeout 15 --max-time "$max_seconds" \
+  $resolve_args \
   -X "$http_method" \
   -H "Authorization: Bearer ${job_secret}" \
   "$url" 2>"$err_file")

@@ -51,7 +51,7 @@
 # XPHERE_BASE_URL is switched to it (see README "internal networking"),
 # which sidesteps the Cloudflare 524 risk entirely. max_seconds 180 gives
 # headroom above the observed 103s ceiling.
-*/10 * * * * /app/tick.sh XPHERE global-knowledge-notion "${XPHERE_BASE_URL}/api/cron/global-knowledge-notion" 600 180
+*/10 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE global-knowledge-notion "${XPHERE_BASE_URL}/api/cron/global-knowledge-notion" 600 180
 
 # scrape-reviews — daily Google Reviews scrape (SerpAPI) across every active
 # google_business_profile. xphere-specific exception: authenticates with
