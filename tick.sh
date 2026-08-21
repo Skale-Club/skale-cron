@@ -117,11 +117,22 @@ fi
 # We use that instead of `date +%N` because Alpine's busybox `date` does not
 # reliably support sub-second formatting.
 # shellcheck disable=SC2086  # resolve_args is intentionally word-split
+# EXTRA_HEADER exists because not every target authenticates with a bearer
+# token. Supabase's REST API rejects `Authorization: Bearer <key>` on its own
+# with a 401 and wants an `apikey:` header (or query parameter) as well, so the
+# keepalive jobs pass both. Set it per crontab line, referencing an env var so
+# no credential is written into this repository.
+extra_header_args=()
+if [ -n "${EXTRA_HEADER:-}" ]; then
+  extra_header_args=(-H "$EXTRA_HEADER")
+fi
+
 curl_out=$(curl -sS -o "$body_file" -w '%{http_code} %{time_total}' \
   --connect-timeout 15 --max-time "$max_seconds" \
   $resolve_args \
   -X "$http_method" \
   -H "Authorization: Bearer ${job_secret}" \
+  "${extra_header_args[@]}" \
   "$url" 2>"$err_file")
 curl_exit=$?
 

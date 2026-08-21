@@ -116,7 +116,7 @@
 #
 # Auth is the project's own service key as Bearer; the keys live in Coolify
 # env, never here - this repository is public.
-*/5 * * * * /app/tick.sh VITACELL keepalive "${VITACELL_BASE_URL}/rest/v1/" 86400 30
-15 9 * * * /app/tick.sh RWMGMT keepalive "${RWMGMT_BASE_URL}/rest/v1/" 86400 30
-25 9 * * * /app/tick.sh OBIGODE keepalive "${OBIGODE_BASE_URL}/rest/v1/" 86400 30
-35 9 * * * /app/tick.sh WEBSITES keepalive "${WEBSITES_BASE_URL}/rest/v1/" 86400 30
+*/5 * * * * EXTRA_HEADER="apikey: ${VITACELL_CRON_SECRET}" /app/tick.sh VITACELL keepalive "${VITACELL_BASE_URL}/rest/v1/" 86400 30
+*/5 * * * * EXTRA_HEADER="apikey: ${RWMGMT_CRON_SECRET}" /app/tick.sh RWMGMT keepalive "${RWMGMT_BASE_URL}/rest/v1/" 86400 30
+*/5 * * * * EXTRA_HEADER="apikey: ${OBIGODE_CRON_SECRET}" /app/tick.sh OBIGODE keepalive "${OBIGODE_BASE_URL}/rest/v1/" 86400 30
+*/5 * * * * EXTRA_HEADER="apikey: ${WEBSITES_CRON_SECRET}" /app/tick.sh WEBSITES keepalive "${WEBSITES_BASE_URL}/rest/v1/" 86400 30
