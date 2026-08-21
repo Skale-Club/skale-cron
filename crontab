@@ -100,3 +100,23 @@
 # (app healthy, endpoint returns 401), i.e. the GitHub secret and the container
 # already disagree -- fix that before migrating it here.
 
+# ── Supabase keepalives for client projects ─────────────────────────────────
+#
+# Moved off GitHub Actions because the org's 2.000 included private-repo
+# minutes are spent, so GitHub refuses to start those jobs at all - they die
+# in two seconds with no steps and no log. Supabase pauses a free project
+# after 7 days idle, and the quota does not reset until the 1st, so the
+# projects would have paused before Actions could run again.
+#
+# Daily, not every-3-days like the workflows they replace. Frequency is free
+# on our own box, and the interval drives the alert: obs-alerts flags a job
+# stale at 3x its expected interval, so daily means an alert after 3 days of
+# silence - inside Supabase's 7-day window. At every-3-days the alert would
+# not fire until day 9, after the project had already paused.
+#
+# Auth is the project's own service key as Bearer; the keys live in Coolify
+# env, never here - this repository is public.
+5 9 * * * /app/tick.sh VITACELL keepalive "${VITACELL_BASE_URL}/rest/v1/" 86400 30
+15 9 * * * /app/tick.sh RWMGMT keepalive "${RWMGMT_BASE_URL}/rest/v1/" 86400 30
+25 9 * * * /app/tick.sh OBIGODE keepalive "${OBIGODE_BASE_URL}/rest/v1/" 86400 30
+35 9 * * * /app/tick.sh WEBSITES keepalive "${WEBSITES_BASE_URL}/rest/v1/" 86400 30
