@@ -97,9 +97,3 @@
 
 # xtimator cleanup-whatsapp-sessions
 # */15 * * * * /app/tick.sh XTIMATOR cleanup-whatsapp-sessions "${XTIMATOR_BASE_URL}/api/cron/cleanup-whatsapp-sessions" 900 60
-
-# TEMPORARY self-test (removed in the next commit). Points at a route that does
-# not exist, to prove the failure path end to end: tick.sh must record a failure
-# heartbeat, log the missing-bot line, and still exit 0 so supercronic keeps
-# every other job running.
-* * * * * /app/tick.sh XPHERE _selftest/falha "${XPHERE_BASE_URL}/api/cron/rota-inexistente" 60 20
