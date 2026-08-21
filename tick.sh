@@ -62,12 +62,22 @@ err_file="/tmp/curl_err.$$"
 cleanup() { rm -f "$body_file" "$err_file"; }
 trap cleanup EXIT
 
-# json_escape: minimal JSON string escaper for stdin -> stdout. Handles the
-# characters actually likely to show up in a response body/error snippet
-# (backslash, double quote, newline). Not a general-purpose JSON encoder —
-# good enough for a truncated log/alert string, not for arbitrary payloads.
+# json_escape: makes an arbitrary response body safe to embed in a JSON string.
+#
+# The first version hand-escaped backslash and quote but left control characters
+# alone, which broke on the very first real failure: a 404 from Next.js returns
+# a full HTML error page containing tabs, and a raw tab is invalid inside a JSON
+# string. The endpoint rejected the payload, the fire-and-forget POST swallowed
+# the rejection, and the failure heartbeat was never recorded — a job that had
+# just failed left no trace at all, which is the exact blindness the heartbeat
+# exists to prevent.
+#
+# So: keep only printable ASCII, then drop the two characters that would still
+# need escaping. This is a truncated ops error snippet, not data we round-trip,
+# so losing a quote or a backslash costs nothing and removes the whole class of
+# malformed-payload bugs rather than trying to escape its way out of them.
 json_escape() {
-  sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr -d '\r' | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g'
+  tr -cd '[:print:]' | tr -d '"\\'
 }
 
 # --- resolve this job's own auth secret (per project, with override) ---
@@ -155,13 +165,21 @@ if [ -n "${XPHERE_BASE_URL:-}" ]; then
   heartbeat_payload=$(printf '{"job_name":"%s","status":%s,"duration_ms":%s,%s"error":%s}' \
     "$qualified_job_name" "$status" "$duration_ms" "$interval_field" "$error_field")
 
-  curl -sS -o /dev/null \
+  # The heartbeat must never fail the job — but a heartbeat that fails silently
+  # is worse than none, because the watchdog then reports a healthy job as dead
+  # (or, as happened here, never learns a job failed at all). So still swallow
+  # the failure, and always log the status so the gap is visible in the logs.
+  hb_status=$(curl -sS -o /dev/null -w '%{http_code}' \
     --connect-timeout 10 --max-time 15 \
     -X POST \
     -H "Authorization: Bearer ${XPHERE_CRON_SECRET:-}" \
     -H "Content-Type: application/json" \
     -d "$heartbeat_payload" \
-    "${XPHERE_BASE_URL%/}/api/cron/heartbeat" >/dev/null 2>&1 || true
+    "${XPHERE_BASE_URL%/}/api/cron/heartbeat" 2>/dev/null) || hb_status=000
+  case "$hb_status" in
+    2*) : ;;
+    *) echo "timestamp=${timestamp} project=${project_upper} job=${job_name} heartbeat=FAILED http=${hb_status}" ;;
+  esac
 fi
 
 # --- Telegram alert on non-2xx or timeout/connection failure ---
