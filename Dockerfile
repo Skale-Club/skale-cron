@@ -19,16 +19,19 @@ RUN apk add --no-cache curl bash ca-certificates tzdata \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" /usr/local/bin/supercronic \
- && addgroup -S cron && adduser -S -G cron cron
+ # Alpine's busybox base already ships a `cron` group, so `addgroup -S cron`
+ # fails with "group 'cron' in use" and takes the whole RUN layer with it.
+ # Use a distinct name for the unprivileged runtime user instead.
+ && addgroup -S skalecron && adduser -S -G skalecron skalecron
 
 WORKDIR /app
 
 COPY tick.sh /app/tick.sh
 COPY crontab /app/crontab
 RUN chmod +x /app/tick.sh \
- && chown -R cron:cron /app
+ && chown -R skalecron:skalecron /app
 
-USER cron
+USER skalecron
 
 # TZ defaults to UTC in .env.example so crontab entries below keep the exact
 # same wall-clock semantics as the GitHub Actions `cron:` expressions they
