@@ -53,6 +53,17 @@
 # headroom above the observed 103s ceiling.
 */10 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE global-knowledge-notion "${XPHERE_BASE_URL}/api/cron/global-knowledge-notion" 600 180
 
+# ads-changes-tick — worker for xphere's Ads Command Engine (docs/ads/
+# control-plane.md): executes queued ad changes whose retry time has come
+# (transient Google/Meta errors back off 1-2-4-8 min), expires approvals past
+# their deadline, re-reads recently applied changes to flag edits made outside
+# Xphere, and reports rows stuck mid-flight. Every 2 min so a retry lands
+# close to its scheduled time. The route stops starting new work after ~60s,
+# but it calls the ad platforms sequentially, so it is pinned to the origin
+# (ORIGIN_HOSTNAME) to stay clear of Cloudflare's 100s 524. Overlapping runs
+# are safe: every state transition is a conditional UPDATE, one caller wins.
+*/2 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE ads-changes-tick "${XPHERE_BASE_URL}/api/cron/ads-changes-tick" 120 90
+
 # scrape-reviews — daily Google Reviews scrape (SerpAPI) across every active
 # google_business_profile. xphere-specific exception: authenticates with
 # OPERATOR_AUTOMATION_SECRET instead of XPHERE_CRON_SECRET (matches the
