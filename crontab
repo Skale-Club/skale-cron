@@ -64,6 +64,28 @@
 # are safe: every state transition is a conditional UPDATE, one caller wins.
 */2 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE ads-changes-tick "${XPHERE_BASE_URL}/api/cron/ads-changes-tick" 120 90
 
+# seo-tick — worker for xphere's SEO module (.planning/seo-module/SPEC.md):
+# resumes technical site audits under a ~50s budget (the crawl frontier lives
+# in the DB, so a cut-off tick loses nothing), syncs Google Search Console for
+# up to 3 sites, and prunes old audit detail. Every minute so a "Run audit"
+# click starts within 60s. Pinned to the origin like the other long ticks.
+* * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE seo-tick "${XPHERE_BASE_URL}/api/cron/seo-tick" 60 90
+
+# local-seo-tick — Local SEO geogrid worker (docs/local-seo/README.md): starts
+# due scheduled scans and drains queued grid points from DataForSEO/SerpAPI
+# under a ~55s budget. Spends paid SERP credits, but only for scans that were
+# requested or scheduled; quota is enforced per org in the app.
+* * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE local-seo-tick "${XPHERE_BASE_URL}/api/cron/local-seo-tick" 60 90
+
+# gbp-sync-tick — Google Business Profile sync: official reviews, posts,
+# performance metrics and the daily profile snapshot used to detect edits
+# Google makes on its own. No-op until an org connects a Business Profile.
+*/15 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE gbp-sync-tick "${XPHERE_BASE_URL}/api/cron/gbp-sync-tick" 900 90
+
+# local-seo-maintenance — daily Local SEO housekeeping: 60-day SERP retention
+# and failing scans stuck mid-flight. maxDuration 300 in the route.
+30 5 * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE local-seo-maintenance "${XPHERE_BASE_URL}/api/cron/local-seo-maintenance" 86400 300
+
 # scrape-reviews — daily Google Reviews scrape (SerpAPI) across every active
 # google_business_profile. xphere-specific exception: authenticates with
 # OPERATOR_AUTOMATION_SECRET instead of XPHERE_CRON_SECRET (matches the
