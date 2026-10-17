@@ -44,6 +44,14 @@
 # newly ingested prospects get analyzed promptly.
 */10 * * * * /app/tick.sh XPHERE website-analyzer "${XPHERE_BASE_URL}/api/cron/website-analyzer" 600 60
 
+# prospect-verify-tick — verifies never-checked prospect emails (MillionVerifier,
+# NeverBounce fallback) and auto-imports the 'ok' ones into Xmail. Spends real
+# credits, so the app caps it per day (PROSPECTING_AUTO_VERIFY_MAX_PER_DAY) and
+# alerts once a day on Telegram when both providers are dry; out of credits is
+# a 200 with stopped_reason, not a failure. Every 30 min is plenty: it catches
+# up on a daily trickle of scraped prospects, nothing waits on it.
+*/30 * * * * /app/tick.sh XPHERE prospect-verify-tick "${XPHERE_BASE_URL}/api/cron/prospect-verify-tick" 1800 120
+
 # global-knowledge-notion — drains the durable Notion sync queue. This job
 # legitimately runs 88-103s (it's why the GitHub workflow bypassed
 # Cloudflare's 100s proxy timeout via --resolve to the origin IP). On this
