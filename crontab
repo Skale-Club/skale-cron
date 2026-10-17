@@ -49,8 +49,10 @@
 # credits, so the app caps it per day (PROSPECTING_AUTO_VERIFY_MAX_PER_DAY) and
 # alerts once a day on Telegram when both providers are dry; out of credits is
 # a 200 with stopped_reason, not a failure. Every 30 min is plenty: it catches
-# up on a daily trickle of scraped prospects, nothing waits on it.
-*/30 * * * * /app/tick.sh XPHERE prospect-verify-tick "${XPHERE_BASE_URL}/api/cron/prospect-verify-tick" 1800 120
+# up on a daily trickle of scraped prospects, nothing waits on it. A batch of
+# ~50 checks took over 2 min on 2026-10-17, past Cloudflare's 100s proxy cap,
+# so it goes to origin like global-knowledge-notion, with a 300s ceiling.
+*/30 * * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE prospect-verify-tick "${XPHERE_BASE_URL}/api/cron/prospect-verify-tick" 1800 300
 
 # global-knowledge-notion — drains the durable Notion sync queue. This job
 # legitimately runs 88-103s (it's why the GitHub workflow bypassed
