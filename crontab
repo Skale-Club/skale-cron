@@ -109,6 +109,14 @@
 # afterwards. The route stops itself at 60s, inside Cloudflare's 100s limit.
 41 * * * * /app/tick.sh XPHERE storage-retention "${XPHERE_BASE_URL}/api/cron/storage-retention" 3600 110
 
+# meta-capi-worker and meta-audience-sync — moved from GitHub Actions
+# on 2026-11-05: the workflows reached Supabase directly, which is Xphere's dev
+# database since the cutover. The routes use the app's own database client.
+# CAPI drains for at most 60s, inside Cloudflare's 100s limit; the audience
+# sync answers at once and runs in after() under a lock.
+*/5 * * * * /app/tick.sh XPHERE meta-capi-worker "${XPHERE_BASE_URL}/api/cron/meta-capi-worker" 300 100
+15 * * * * /app/tick.sh XPHERE meta-audience-sync "${XPHERE_BASE_URL}/api/cron/meta-audience-sync" 3600 60
+
 # --- NOT migrated: meta-capi-worker, meta-audience-sync -------------------
 # Both `xphere/.github/workflows/meta-capi-worker.yml` and
 # `meta-audience-sync.yml` check out the repo and run a TypeScript script
