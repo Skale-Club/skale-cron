@@ -103,6 +103,12 @@
 # both overridden inline for this one line only.
 0 6 * * * CRON_SECRET_OVERRIDE="$OPERATOR_AUTOMATION_SECRET" HTTP_METHOD=POST /app/tick.sh XPHERE scrape-reviews "${XPHERE_BASE_URL}/api/reviews/scrape" 86400 120
 
+# storage-retention — removes website screenshots a day after the analysis and
+# chat media past its retention. Only simulates until the STORAGE_RETENTION_*
+# flags are set in Xphere. Hourly so the backlog drains in about a day, cheap
+# afterwards. The route stops itself at 60s, inside Cloudflare's 100s limit.
+41 * * * * /app/tick.sh XPHERE storage-retention "${XPHERE_BASE_URL}/api/cron/storage-retention" 3600 110
+
 # --- NOT migrated: meta-capi-worker, meta-audience-sync -------------------
 # Both `xphere/.github/workflows/meta-capi-worker.yml` and
 # `meta-audience-sync.yml` check out the repo and run a TypeScript script
