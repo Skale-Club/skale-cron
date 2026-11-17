@@ -177,3 +177,25 @@
 15 9 * * * EXTRA_HEADER="apikey: ${RWMGMT_CRON_SECRET}" /app/tick.sh RWMGMT keepalive "${RWMGMT_BASE_URL}/rest/v1/" 86400 30
 25 9 * * * EXTRA_HEADER="apikey: ${OBIGODE_CRON_SECRET}" /app/tick.sh OBIGODE keepalive "${OBIGODE_BASE_URL}/rest/v1/" 86400 30
 35 9 * * * EXTRA_HEADER="apikey: ${WEBSITES_CRON_SECRET}" /app/tick.sh WEBSITES keepalive "${WEBSITES_BASE_URL}/rest/v1/" 86400 30
+
+# ── xprout (source: xprout/src/app/api/internal/*) ──────────────────────────
+#
+# Xprout has no in-process scheduler: these POSTs are its only scheduling path.
+# Auth is XPROUT_CRON_SECRET as Bearer (Coolify env, same value as the app's
+# CRON_SECRET); XPROUT_BASE_URL is https://xprout.app. Each call is cheap when
+# there is nothing to do, and a failure in one blog is reported in the body,
+# not as an HTTP error, so one bad restaurant never alerts for all of them.
+
+# blog-generate — sweeps every enabled blog (the platform's and each
+# restaurant's); each one applies its own cadence and posting hour in its own
+# timezone, so hourly is the right resolution and the line never changes as
+# restaurants come and go. max 300s: a due post is written in this call.
+0 * * * * HTTP_METHOD=POST /app/tick.sh XPROUT blog-generate "${XPROUT_BASE_URL}/api/internal/blog/cron/generate" 3600 300
+
+# blog-fetch-rss — pulls the RSS sources of every blog that has RSS on (a blog
+# with RSS off opens no sockets). Every 6 hours is plenty for news sources.
+20 */6 * * * HTTP_METHOD=POST /app/tick.sh XPROUT blog-fetch-rss "${XPROUT_BASE_URL}/api/internal/blog/cron/fetch-rss" 21600 120
+
+# access-requests-abandoned — tells the team once about access-request drafts
+# idle for 30+ minutes; every 15 minutes keeps that within the hour.
+*/15 * * * * HTTP_METHOD=POST /app/tick.sh XPROUT access-requests-abandoned "${XPROUT_BASE_URL}/api/internal/access-requests/abandoned" 900 60
