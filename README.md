@@ -4,6 +4,13 @@ A single small container that triggers the scheduled HTTP jobs for every
 Skale-Club project, using [supercronic](https://github.com/aptible/supercronic)
 against one versioned `crontab`.
 
+Job failures send **🔴 Crítico — Falha em tarefa agendada**, with separate
+application/job, HTTP status, duration and literal response details in Portuguese.
+Plain text avoids rejecting diagnostics containing Markdown characters. Routing,
+heartbeat reporting, failure classification, timeouts and the always-zero exit
+contract are unchanged. Xphere's project-specific pair uses **@skaleclubbot →
+Xphere | Ops**; sharing a bot does not merge application destinations.
+
 ## What this replaces, and why
 
 The Skale-Club GitHub org was burning roughly 8,654 GitHub Actions minutes a

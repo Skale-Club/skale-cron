@@ -12,8 +12,8 @@
 #
 #   <project>  Short uppercase slug identifying which app this job belongs
 #              to: XPHERE, XKEDULE, SKALECLUB, XTIMATOR, ... Drives which
-#              secret and which Telegram bot get used (see below) — every
-#              app has its own bot, there is no single shared bot token.
+#              secret and Telegram destination get used (see below). Apps
+#              may share one bot while keeping distinct destination groups.
 #
 # Env read:
 #   <PROJECT>_CRON_SECRET
@@ -234,18 +234,14 @@ if [ "$is_failure" -eq 1 ]; then
 
   if [ -n "$bot_token" ] && [ -n "$chat_id" ]; then
     truncated_body="$(printf '%s' "$body" | head -c 500)"
-    message=$(printf '*skale-cron alert*\nProject: `%s`\nJob: `%s`\nStatus: %s\nDuration: %sms\nBody: `%s`' \
+    message=$(printf '🔴 Crítico — Falha em tarefa agendada\n\nAplicativo: %s\nTarefa: %s\n\nEstado HTTP: %s\nDuração: %s ms\nDetalhes: %s' \
       "$project_upper" "$job_name" "$status" "$duration_ms" "$truncated_body")
 
-    # Best-effort: Telegram's plain "Markdown" parse mode is picky about
-    # unescaped _ * [ ] ` in arbitrary body text. This is an ops alert, not
-    # user-facing UI, so we accept occasional formatting glitches rather
-    # than hand-rolling a full MarkdownV2 escaper here.
+    # Plain text preserves arbitrary response diagnostics without markup errors.
     curl -sS -o /dev/null \
       --connect-timeout 10 --max-time 15 \
       --data-urlencode "chat_id=${chat_id}" \
       --data-urlencode "text=${message}" \
-      --data-urlencode "parse_mode=Markdown" \
       "https://api.telegram.org/bot${bot_token}/sendMessage" >/dev/null 2>&1 || true
   else
     # Telegram is never a startup requirement and this must never be fatal —
