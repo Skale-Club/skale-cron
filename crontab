@@ -117,6 +117,16 @@
 */5 * * * * /app/tick.sh XPHERE meta-capi-worker "${XPHERE_BASE_URL}/api/cron/meta-capi-worker" 300 100
 15 * * * * /app/tick.sh XPHERE meta-audience-sync "${XPHERE_BASE_URL}/api/cron/meta-audience-sync" 3600 60
 
+# xpot-task-sync and ads-tick — moved from GitHub Actions on 2026-11-21, when
+# the xphere repo became private and its Actions minutes started counting
+# against the org's shared quota (GitHub also throttled the */5 schedule to a
+# few runs per hour). Their workflows keep only workflow_dispatch.
+# xpot-task-sync drains the Xpot task outbox; the route stops at 55s.
+*/5 * * * * /app/tick.sh XPHERE xpot-task-sync "${XPHERE_BASE_URL}/api/cron/xpot-task-sync" 300 60
+# ads-tick: nightly Ads insights capture + connection health; idempotent upsert,
+# can run up to 300s, so it goes to the origin past Cloudflare's 100s limit.
+10 5 * * * ORIGIN_HOSTNAME=origin.xphere.app /app/tick.sh XPHERE ads-tick "${XPHERE_BASE_URL}/api/cron/ads-tick" 86400 300
+
 # --- NOT migrated: meta-capi-worker, meta-audience-sync -------------------
 # Both `xphere/.github/workflows/meta-capi-worker.yml` and
 # `meta-audience-sync.yml` check out the repo and run a TypeScript script
